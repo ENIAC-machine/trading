@@ -1,0 +1,37 @@
+import numpy as np
+import requests as rq
+import datetime as dt
+from tqdm import tqdm
+
+
+''' Check conenction by pinging https://iss.moex.com/iss/reference/ and getting code 200 '''
+check_connection = lambda : None if rq.get(r'https://iss.moex.com/iss/reference/').status_code == 200 else exec(r"raise GETError(rq.get(r'https://iss.moex.com/iss/reference/'))")  
+
+''' Ensure that the data is np.ndarray '''
+ens_nparr = lambda x: np.array(list(x)) if type(x) != np.ndarray else x
+
+
+def ens_same_length(args:dict, verbose:bool=False)->dict:
+    '''
+    Ensures that all arguments' data is of the same length 
+    
+
+    Inputs:
+        args:dict - dictionary of arguments of the function, where each key is the arg name and the value is the 
+            arg list/np.ndarray of some length
+
+        verbose:bool - verbosity param, default is False
+
+    Outputs:
+        args:dict - modified args dict with equal lengths across all passed arguments
+
+    '''
+    
+    args['sec'] = ens_nparr(args['sec'])
+
+    for key, arr in tqdm(args.items(), desc='Ensuring arguments', disable=not verbose):
+        args[key] = ens_nparr(args[key])
+        if arr.shape[0] < args['sec'].shape[0]:
+            args[key] = np.concatenate((arr, np.tile(arr[-1], args['sec'].shape[0]-arr.shape[0])))
+
+    return args 

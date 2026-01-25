@@ -1,0 +1,92 @@
+import pandas as pd
+import numpy as np
+import scipy as sp
+import requests as rq
+import datetime as dt
+from utils import *
+from base import *
+
+
+def history(engine:[str, list, np.ndarray]=None, market:[str, list, np.ndarray]=None,
+            sec:[str, list, np.ndarray]=None, order:[str, list, np.ndarray]='asc', st:[str, dt.datetime]=None, 
+            end:[str, dt.datetime]='31-12-2037', numtrades:[int, list, np.ndarray]=0, 
+            limit:[int, list, np.ndarray]=100, scol:[str, list, np.ndarray]='TRADEDATE',
+            stline:[int, list, np.ndarray]=0, trsession:[int, str, list, np.ndarray]=None, 
+            marketpricebd:[bool, int, list, np.ndarray]=False, verbose:bool=True, lang:str='en')->pd.DataFrame:
+
+        '''
+        
+        Gives history on a security or a number of securities for a given engine and market for a given interval.
+        All variables are defaulted for a case of a single security but they can be extrapolated for the case of 
+        many tickers
+
+        Inputs:
+            engine:[str, list, np.ndarray] - trading engine, default is None
+
+            market:[str, list, np.ndarray] - trading market, default is None
+
+            sec:[str, list, np.ndarray] - a security or a list of securities to retrieve info about
+
+            order:[str, list, np.ndarray] - sorting order, can take 2 values: 'asc' and 'desc', default is 'asc'
+
+            st:[str, dt.datetime] - starting date to retrieve info from. Format is %Y-%m-%d, default is None
+
+            end:[str, dt.datetime] - ending date to retrieve info from. Format is %Y-%m-%d, default is 2037-12-31
+
+            numtrades:[int, list, np.ndarray] - minimum number of trades with the security(-ies)
+
+            limit:[int, list, np.ndarray] - the limit of the number of lines of data to output, default is 100
+
+            scol:[str, list, np.ndarray] - the column, by which to sort the data, default is 'TRADEDATE'
+
+            stline:[int, list, np.ndarray] - the line to start from in the data output
+
+            trsession:[int, str, list, np.ndarray] - the trading session(-s) to find the security(-ies) in. 
+                Possible values are 0,1,2,3 or 'morning', 'main', 'evening', 'general' respectively. 
+                Default is None
+
+            marketpricebd:[bool, int, list, np.ndarray] - flag to give data only for the main mode of 
+                trading for the security. Works only for engine='stock' and 
+                market in ['shares', 'bonds', 'foreignshares']
+
+            verbose:bool - verbosity flag, default is False
+
+            lang:str - language of output, can be 'en' or 'ru', default is en
+            
+        Outputs:
+
+            dfs:[dict, pd.DataFrame] - output data, if only one security is required, then outputs pd.DataFrame,
+                otherwise outputs a dictionary where the stock ticker is key and the data on it is the value
+
+        '''
+
+        check_connection()
+
+        try:
+            args = {nm : np.array(arg) if arg is not None else np.array([None]) 
+                                                            for nm, arg in locals().items() if nm != 'verbose'}
+        except:
+            raise ValueError('Values in your array should all be of the same type')
+        
+        #for arg in ['st', 'end']:
+        #    if type(args[arg][0]) 
+
+        assert max(list(map(lambda x: x.shape[0], args.values()))) <= args['sec'].shape[0], 
+               fr'Too many characteristics passed, expected {args["sec"].shape}, got {max(list(map(lambda x: x.shape, args.values())))}'
+
+        #Ensure all arrays are of the same size
+        args = ens_same_length(args=args, False)
+
+        #args_matrix = np.concatenate(args.values()).reshape(-1, args['sec'].shape[0])
+         
+        dfs = dict()
+        for i in tqdm(np.arange(args['sec'].shape[0]-1), desc'Getting data on securities', disable= not verbose):
+            dfs_i = []
+            iters = int(np.ceil(args['limit'][i] / 100))
+            for j in np.arange(iters-1):
+                query = rf''' https://iss.moex.com/iss/history/engines/{args['engine'][i]}/markets/{args['market'][i]}/securities/{args['sec'][i]}?sort_order={args['order'][i]}&from={args['st'][i]}&till={args['end'][i]}&numtrades={args['numtrades'][i]}&lang={lang}&limit={min(args['limit'][i]%100, 100)}&sort_column={args['scol'][i]}&start={args['stline'][i]+100*j}&tradingsession={args['trsession'][i]}&marketprice_board={int(args['marketpricebd'][i])}'''
+                dfs_i.append(pd.read_csv(query, encoding='ANSI', sep=';', header=1))
+            dfs[args['sec'][i]] = pd.concat(dfs_i, axis=0)
+
+        return dfs if len(dfs.keys()) > 1 else list(dfs.values())[0]
+

@@ -1,0 +1,62 @@
+import pandas as pd
+import numpy as np
+import scipy as sp
+import requests as rq
+import datetime as dt
+from base import GETError
+
+
+
+    def res_intra(self, engine:[str, list, np.ndarray]=None, market:[str, list, np.ndarray],
+                  secstats:[int, list, np.ndarray]=None, trsession:[int, list, np.ndarray]=None,
+                  sec:[str, list, np.ndarray]=None, boardid:[str, list, np.ndarray]=None,
+                  verbose:bool=True)->[pd.DataFrame, dict]:
+
+        r'''
+
+        Get the information on the intraday results, only for the fund market
+
+        Inputs:
+
+            market:[str, list, np.ndarray] - trading market, default is None
+
+            secstats:[int, list, np.ndarray] - intraday results, can be int or iterable, can take 3 possible values:
+                1 for the main session, 2 for the evening session, 3 for the general summary, default is None
+
+            trsession:[int, list, np.ndarray] - session data filter, works identically to secstats in terms of values, 
+                default is None
+
+            sec:[str, list, np.ndarray] - securities to get the stats about
+            
+            boardid:[str, list, np.ndarray] - board id, can be string or iterable, default is None
+
+            verbose:bool - verbosity parameter, default is True so that when you start the function you seem cool or smth, idk
+
+        Outputs:
+            dfs:[dict, pd.DataFrame] - data on the intraday results, if several engines/ markets are requested returns an array
+                with key as the unique engine-market combination and the value as the pd.DataFrame with the info  
+
+        '''
+
+        self.check_connection()
+
+        assert None not in np.array(list(locals.values())).flatten(), rf"You didn't specify some of the arguments: {[nm for nm, arg in locals().items() if arg is None or None in arg]}"
+
+        args = {nm : np.array(list(arg)) for nm, arg in locals().items() if nm != 'verbose'}
+
+        assert max(map(lambda x: x.shape[0], args.values())) <= args['engine'].shape[0], "More arguments than markets considered"
+
+        assert len(args['sec'].shape) <= 2, f"Too many dimensions for the securities array, expected no more than 2, got {len(args['sec'].shape)}"
+        
+        args = self.ens_same_length(args=args, False)
+
+        dfs = []
+        for idx in tqdm(np.arange(args['sec'].shape[0]-1), desc=f'Getting security {idx+1} out of {args["sec"].shape[0]}', disable=not verbose):
+            unique_secs = np.array(np.unique(args['sec'][idx]))
+            batch = []
+            for idx_batch in np.arange(unique_secs.shape[0] % 10):
+                batch += [pd.read_csv(fr'https://iss.moex.com/iss/engines/stock/markets/{args["market"][idx]}/secstats={args["secstats"]}?securities={','.join(unique_secs[idx_batch*10:idx_batch*10+10])}&tradingsession={args["trsession"]}&boardid={args["boardid"][idx_batch*10:idx_batch*10+10]}')]
+            
+            dfs.append(batch)
+
+        return dfs
