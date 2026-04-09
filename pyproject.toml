@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build-meta"
+
+[project]
+name = "moex_api"
+version = "0.1.0"
+dependencies = [
+		"numpy==2.4.4",
+		"pandas==3.0.2",
+		"scipy==1.17.1",
+		"tqdm==4.67.3",
+		"requests==2.33.1"
+		]
