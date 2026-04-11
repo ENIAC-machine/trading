@@ -3,7 +3,11 @@ import numpy as np
 import scipy as sp
 import requests as rq
 import datetime as dt
+
+from time import sleep
+from urllib.error import URLError
 from typing import Union, List
+
 from .utils import *
 from .base import GETError, agg_info
 
@@ -22,7 +26,9 @@ def history(sec: Union[str, list, np.ndarray],
             marketpricebd: Union[bool, int, list, np.ndarray]=True,
             verbose: bool=False,
             lang: str='en',
-            out: str='df' 
+            out: str='df',
+            max_retries: int = 5,
+            retry_pause: int = 1
             )->Union[dict, pd.DataFrame, None]:
 
         '''
@@ -65,6 +71,10 @@ def history(sec: Union[str, list, np.ndarray],
             out: str - what to return, can be 'df' to return multiindex dataFrame or 'dict' to return the
                         dictionary of the form {<name> : <dataframe>}, default value is 'df'
 
+            max_retries: int - maximum number of retries in case the connection goes bad during data loading, defaults to 5
+
+            retry_pause: int - pause in seconds, defaults to 1
+
         Outputs:
 
             dfs:[dict, pd.DataFrame] - output data, if only one security is required, then outputs pd.DataFrame,
@@ -94,8 +104,28 @@ def history(sec: Union[str, list, np.ndarray],
             iters = np.ceil(num_days / 100).astype(int)
             for j in tqdm(range(iters), desc=f'Fetching data on {args["sec"][i]}', leave=False, disable= not verbose):
                 query = rf''' https://iss.moex.com/iss/history/engines/{args['engine'][i]}/markets/{args['market'][i]}/securities/{args['sec'][i]}.csv?sort_order={args['order'][i]}&from={str(args['st'][i]).split(' ')[0]}&till={str(args['end'][i]).split(' ')[0]}&numtrades={args['numtrades'][i]}&lang={lang}&limit={min(num_days-j*100, 100)}&sort_column={args['scol'][i]}&start={args['stline'][i]+100*j}&tradingsession={args['trsession'][i]}&marketprice_board={int(args['marketpricebd'][i])}'''
-                #print(query)
-                df_tmp = pd.read_csv(query, encoding='cp1251', sep=';', header=1, on_bad_lines='skip')
+                
+                for _ in range(max_retries):
+
+                    try:
+                        
+                        df_tmp = pd.read_csv(query,
+                                             encoding='cp1251',
+                                             sep=';',
+                                             header=1,
+                                             on_bad_lines='skip'
+                                             )
+                    except URLError as e:
+                        err = e
+                        sleep(retry_pause)
+                        continue
+                    else:
+                        break
+        
+                else:
+                    raise err
+    
+
                 if j == 0:
                     max_lines = df_tmp.iloc[-1, 1]
                     #print(iters)
