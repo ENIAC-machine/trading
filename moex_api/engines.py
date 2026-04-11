@@ -4,8 +4,8 @@ import scipy as sp
 import requests as rq
 import datetime as dt
 from typing import Union, List
-from utils import *
-from base import GETError
+from .utils import *
+from .base import GETError
 
 
 ##TODO: you can't read the .csv file, redo to interpret data from json and convert into .csv

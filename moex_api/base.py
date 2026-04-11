@@ -4,7 +4,7 @@ import scipy as sp
 import requests as rq
 import datetime as dt
 from typing import Union, List
-from utils import *
+from .utils import *
 
 '''
 

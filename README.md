@@ -15,7 +15,7 @@ pip install git+https://github.com/ENIAC-machine/trading
 Below you can find some example python code to load a history of the 'YNDX' stock:
 
 ```python
-from history import history
+from moex_api.history import history
 
 df = history(sec='YNDX', st='2020-01-01')
 
