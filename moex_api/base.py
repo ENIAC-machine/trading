@@ -3,10 +3,15 @@ import numpy as np
 import scipy as sp
 import requests as rq
 import datetime as dt
+<<<<<<< HEAD:base.py
 
 from urllib.parse import urlencode
 from typing import Union, Iterable
 from utils import *
+=======
+from typing import Union, List
+from .utils import *
+>>>>>>> dd6d9d7eb8a949bae4b7e4ff97cbba85f9641a92:moex_api/base.py
 
 '''
 
